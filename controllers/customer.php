@@ -9,11 +9,15 @@ class Customer extends MY_Controller {
     // Define the search values
     $this->_searchConf  = array(
       'shop' => $this->_default_store,
-      'customer_name' => '',
+      'first_name' => '',
+      'last_name' => '',
+      'client_id' => '',
       'email' => '',
       'page_size' => '80',
+      'sort_field' => 'created_at',
+      'sort_direction' => 'DESC',
     );
-    $this->_searchSession = 'customer';
+    $this->_searchSession = 'customer_sel';
   }
   
   public function index(){
@@ -31,9 +35,13 @@ class Customer extends MY_Controller {
 
     // Get data
     $arrCondition =  array(
-       'customer_name' => $this->_searchVal['customer_name'],
+       'first_name' => $this->_searchVal['first_name'],
+       'last_name' => $this->_searchVal['last_name'],
+       'client_id' => $this->_searchVal['client_id'],
        'email' => $this->_searchVal['email'],
        'page_size' => $this->_searchVal['page_size'],              
+       'page_number' => $page,              
+       'sort' => $this->_searchVal['sort_field'] . ' ' . $this->_searchVal['sort_direction'],
     );
     $this->Customer_model->rewriteParam($this->_searchVal['shop']);
     $data['query'] =  $this->Customer_model->getList( $arrCondition );
@@ -55,5 +63,46 @@ class Customer extends MY_Controller {
     $this->load->view('view_customer', $data );
     $this->load->view('view_footer');
   }
+  
+  public function sync($shop) {
+    $this->Customer_model->rewriteParam($shop);
+
+    // Intialize Mindbody Credential
+    $this->load->library('MBClientService');
+    $creds = new SourceCredentials($this->config->item('MINDBODY_SOURCENAME'), $this->config->item('MINDBODY_PASSWORD'), array($this->config->item('MINDBODY_SITEID')));
+    $usercreds = new UserCredentials($this->config->item('MINDBODY_USERNAME'), $this->config->item('MINDBODY_USERPASSWORD'), array($this->config->item('MINDBODY_SITEID')));
+    
+    $this->mbclientservice->SetDefaultCredentials($creds);
+    $this->mbclientservice->SetDefaultUserCredentials($usercreds);
+
+    $pageNum = 0;
+    $pageSize = 1000;
+    $error = '';
+    
+    do {
+      $result = $this->mbclientservice->GetClients(array(), '', $pageSize, $pageNum);
+      
+      if ($result['error'] == '') {
+        foreach ($result['data'] as $client) {
+          $this->Customer_model->add($client);
+        }
+      } else {
+        $error = $result['error'];
+      }
+      
+      $pageNum ++;
+    } while ( $error == '' && count($result['data']) > 0);
+    
+    if ($error == '')
+      echo 'success';
+    else
+      echo $error;
+  }
+  
+  public function clear($shop) {
+    $this->Customer_model->clear();
+    
+    echo 'success';
+  }  
 }            
 

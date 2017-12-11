@@ -18,11 +18,13 @@ class MBClientService extends MBAPIService
 		$this->client->__setLocation($endpointUrl);
 	}
 	
-	public function GetClients(array $clientIDs, $PageSize = null, $CurrentPage = null, $XMLDetail = XMLDetail::Full, $Fields = null, SourceCredentials $credentials = null)
+	public function GetClients(array $clientIDs,  $searchText = '', $PageSize = null, $CurrentPage = null, $XMLDetail = XMLDetail::Full, $Fields = null, SourceCredentials $usercredentials = null)
 	{
-		$additions['ClientIDs'] = $clientIDs;
-		$params = $this->GetMindbodyParams($additions, $this->GetCredentials($credentials), $XMLDetail, $PageSize, $CurrentPage, $Fields);
-		
+    $additions = array();
+    $additions['SearchText'] = $searchText;
+    if (count($clientIDs) > 0 ) $additions['ClientIDs'] = $clientIDs;
+		$params = $this->GetMindbodyParams($additions, $this->GetCredentials(), $XMLDetail, $PageSize, $CurrentPage, $Fields, $this->GetUserCredentials($usercredentials));
+
 		try
 		{
 			$result = $this->client->GetClients($params);
@@ -39,7 +41,23 @@ class MBClientService extends MBAPIService
 			DebugResponse($this->client, $result);
 		}
 		
-		return $result;
+    $arrReturn = array(
+      'error' => '',
+      'data' => array(),
+      'resultCount' => $result->GetClientsResult->ResultCount
+    );
+        
+    if (isset($result->GetClientsResult->Clients) && $result->GetClientsResult->ErrorCode == '200') {
+      if ($result->GetClientsResult->ResultCount == 1) {
+        $arrReturn['data'][] = $result->GetClientsResult->Clients->Client;
+      } elseif ($result->GetClientsResult->ResultCount > 1) {
+        $arrReturn['data'] = $result->GetClientsResult->Clients->Client;
+      }
+    } else {
+      $arrReturn['error'] =  'Error on API';
+    }
+
+    return $arrReturn;    
 	}
 	
 	public function AddArrival($client, $location, SourceCredentials $credentials = null, $XMLDetail = XMLDetail::Full, $PageSize = NULL, $CurrentPage = NULL, $Fields = NULL)

@@ -519,7 +519,7 @@ class Endpoint extends MY_Controller {
     $arrReturn = $this->Process_model->cancelAppointment($shop, $appointmentId);
 
     // If success, fill the success message
-    if ($arrReturn['error'] == '') $arrReturn['error'] = 'Appointment is early canceled successfully.';
+    if ($arrReturn['error'] == '') $arrReturn['error'] = 'Your appointment has been canceled successfully. <br>You have not been charged for this cancelation.';
     
     echo json_encode($arrReturn);
   }
@@ -568,6 +568,12 @@ class Endpoint extends MY_Controller {
         $arrReturn['data'] = array(
           'id' => $client->ID
         );
+        
+        // Add Client to database
+        $this->load->model('Customer_model');
+        $this->Customer_model->rewriteParam($this->input->post('shop'));
+        
+        $this->Customer_model->add($client);
       }
     } else {
       $arrReturn['error'] = 'Error on get Add Appointment';
@@ -714,7 +720,7 @@ class Endpoint extends MY_Controller {
     // Get Appointments
     $this->load->model('Appointment_model');
     $this->Appointment_model->rewriteParam($shop);
-    $query = $this->Appointment_model->getList(array('client_id' => $clientId, 'sort' => 'start_at DESC'));
+    $query = $this->Appointment_model->getList(array('client_id' => $clientId, 'sort' => 'start_at ASC'));
     
     $arrTemp1 = array();
     
